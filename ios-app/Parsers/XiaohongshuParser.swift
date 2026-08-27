@@ -29,7 +29,7 @@ struct XiaohongshuParser {
                     "笔记需要登录查看、或触发了平台风控验证。请稍后重试。"
             )
         }
-        return buildResult(note, noteId: page.noteId)
+        return try buildResult(note, noteId: page.noteId)
     }
 
     // MARK: - 页面直取
@@ -59,10 +59,9 @@ struct XiaohongshuParser {
               let map = obj(obj(state, "note"), "noteDetailMap", "note_detail_map") else {
             return nil
         }
-        if let ent = map[noteId] as? [String: Any],
-           let n = (ent["note"] as? [String: Any]) ?? ent,
-           looksLikeNote(n) {
-            return n
+        if let ent = map[noteId] as? [String: Any] {
+            let n = (ent["note"] as? [String: Any]) ?? ent
+            if looksLikeNote(n) { return n }
         }
         for (_, v) in map {
             guard let ent = v as? [String: Any] else { continue }
@@ -181,7 +180,7 @@ struct XiaohongshuParser {
 
     // MARK: - 结果组装
 
-    private func buildResult(_ note: [String: Any], noteId: String) -> ParseResult {
+    private func buildResult(_ note: [String: Any], noteId: String) throws -> ParseResult {
         let title = str(note, "title").isEmpty
             ? (str(note, "desc").isEmpty ? "小红书笔记" : str(note, "desc"))
             : str(note, "title")
@@ -240,7 +239,8 @@ struct XiaohongshuParser {
         if let tags = arr(note, "tagList") {
             var tagText = ""
             for t in tags {
-                if let name = str((t as? [String: Any]), "name"), !name.isEmpty {
+                let name = str((t as? [String: Any]), "name")
+                if !name.isEmpty {
                     tagText += "#\(name) "
                 }
             }
