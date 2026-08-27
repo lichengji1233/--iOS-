@@ -20,14 +20,23 @@ jobs:
 
       - name: Build app (unsigned)
         run: |
-          set -e
+          set -eo pipefail
           xcodebuild -version
           xcodebuild -project LinkSaver.xcodeproj -scheme LinkSaver \
             -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build/derived \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            build
+            build 2>&1 | tee /tmp/xcodebuild.log
           echo ">> app build OK"
+
+      - name: Show build errors (if failed)
+        if: failure()
+        run: |
+          echo "===== 最后 40 行 ====="
+          tail -n 40 /tmp/xcodebuild.log
+          echo "===== error 行 ====="
+          grep -nE "error:|fatal error:|BUILD FAILED|The following build commands failed" /tmp/xcodebuild.log | tail -n 30 || true
 
       - name: Package IPA
         run: |
@@ -44,3 +53,11 @@ jobs:
           name: LinkSaver-ipa
           path: build/LinkSaver.ipa
           if-no-files-found: error
+
+      - name: Upload build log (if failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: /tmp/xcodebuild.log
+          if-no-files-found: warn
