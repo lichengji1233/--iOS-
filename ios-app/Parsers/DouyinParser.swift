@@ -17,7 +17,10 @@ struct DouyinParser {
             return result
         }
         let html = try await fetchPage(finalUrl)
-        if let result = parseRenderData(html) ?? parseRouterData(html) {
+        if let result = try? parseRenderData(html) {
+            return result
+        }
+        if let result = try? parseRouterData(html) {
             return result
         }
         if html.contains("captcha") || html.contains("验证码") || html.contains("安全验证") {
@@ -34,7 +37,7 @@ struct DouyinParser {
         return s
     }
 
-    private func parseRenderData(_ html: String) -> ParseResult? {
+    private func parseRenderData(_ html: String) throws -> ParseResult? {
         guard let m = html.range(of: #"id="RENDER_DATA"[^>]*>(.*?)</script>"#, options: .regularExpression) else {
             return nil
         }
@@ -46,17 +49,17 @@ struct DouyinParser {
         if let vRes = obj(app, "videoInfoRes"),
            let list = arr(vRes, "item_list", "itemList"),
            let first = list.first as? [String: Any] {
-            return parseAweme(first)
+            return try parseAweme(first)
         }
         if let nRes = obj(app, "noteDetailRes"),
            let detail = obj(nRes, "note_detail", "noteDetail"),
            let note = obj(detail, "note") {
-            return parseNote(note)
+            return try parseNote(note)
         }
         return nil
     }
 
-    private func parseRouterData(_ html: String) -> ParseResult? {
+    private func parseRouterData(_ html: String) throws -> ParseResult? {
         guard let m = html.range(of: #"window\._ROUTER_DATA\s*=\s*(\{.*?\})\s*</script>"#, options: .regularExpression) else {
             return nil
         }
@@ -70,7 +73,7 @@ struct DouyinParser {
                   let vRes = obj(o, "videoInfoRes"),
                   let list = arr(vRes, "item_list", "itemList"),
                   let first = list.first as? [String: Any] else { continue }
-            return parseAweme(first)
+            return try parseAweme(first)
         }
         return nil
     }
@@ -83,10 +86,10 @@ struct DouyinParser {
         guard let list = arr(json, "item_list", "itemList"), let first = list.first as? [String: Any] else {
             return nil
         }
-        return parseAweme(first)
+        return try parseAweme(first)
     }
 
-    private func parseAweme(_ item: [String: Any]) -> ParseResult {
+    private func parseAweme(_ item: [String: Any]) throws -> ParseResult {
         let desc = str(item, "desc").isEmpty ? "抖音内容" : str(item, "desc")
         let author = str(obj(item, "author"), "nickname")
         let awemeId = str(item, "aweme_id")
@@ -136,7 +139,7 @@ struct DouyinParser {
         return ParseResult(platform: .douyin, title: desc, author: author, caption: desc, items: media)
     }
 
-    private func parseNote(_ note: [String: Any]) -> ParseResult {
+    private func parseNote(_ note: [String: Any]) throws -> ParseResult {
         let desc = str(note, "desc").isEmpty
             ? (str(note, "title").isEmpty ? "抖音图文" : str(note, "title"))
             : str(note, "desc")
