@@ -29,8 +29,8 @@ enum UrlUtils {
     static func extractUrls(from text: String) -> [String] {
         var out: [String] = []
         let ns = text as NSString
-        let matches = urlRegex.matches(in: text, range: NSRange(location: 0, length: ns.length))
-        for m in matches {
+        let found = urlRegex.matches(in: text, range: NSRange(location: 0, length: ns.length))
+        for m in found {
             let raw = ns.substring(with: m.range).trimmingCharacters(in: trailingJunk)
             let u = normalizeScheme(raw)
             if !u.isEmpty && !out.contains(u) { out.append(u) }
@@ -46,7 +46,7 @@ enum UrlUtils {
                 .trimmingCharacters(in: leadingJunk)
                 .trimmingCharacters(in: trailingJunk)
             if token.isEmpty || !token.contains(".") { continue }
-            if matches(bareHostRegex, token) {
+            if regexMatches(bareHostRegex, token) {
                 let u = "https://" + token
                 if !out.contains(u) { out.append(u) }
             }
@@ -91,7 +91,7 @@ enum UrlUtils {
         if lower.contains("twitter") || text.contains("推特") { return .x }
         if lower.contains("instagram") { return .instagram }
         // 链接里带 24 位十六进制笔记ID 的，基本就是小红书
-        if matches(noteIdRegex, url) { return .xiaohongshu }
+        if regexMatches(noteIdRegex, url) { return .xiaohongshu }
         return .unknown
     }
 
@@ -230,7 +230,7 @@ enum UrlUtils {
         return s
     }
 
-    private static func matches(_ regex: NSRegularExpression, _ text: String) -> Bool {
+    private static func regexMatches(_ regex: NSRegularExpression, _ text: String) -> Bool {
         let ns = text as NSString
         return regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) != nil
     }
